@@ -1,3 +1,4 @@
+const _ = require('lodash')
 var express = require('express');
 var router = express.Router();
 const { userModel } = require('../models/user');
@@ -17,6 +18,28 @@ String.prototype.hashCode = function() {
   return Math.abs(hash);
 }
 
+const formatOutput = (array) => {
+  const phoneNumbers = [];
+  const emails = [];
+  const secondaryContactIds = [];
+  let primaryContatctId = null;
+  array.forEach((item) => {
+    const { id } = item;
+    const { phoneNumber, email, linkPrecedence } = item;
+    phoneNumbers.push(phoneNumber);
+    emails.push(email);
+    if (linkPrecedence === 'primary') primaryContatctId = id
+    else secondaryContactIds.push(id);
+  });
+  return {
+    primaryContatctId,
+    secondaryContactIds,
+    emails: _.uniq(emails),
+    phoneNumbers: _.uniq(phoneNumbers),
+  };
+}
+
+
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
@@ -35,11 +58,12 @@ router.post('/identify', async function(req, res, next) {
     emailUsers.forEach((user) => {
       phoneNumbers.push(user.phoneNumber);
     });
-    phoneNumbers.push(phoneNumber);  
+    phoneNumbers.push(phoneNumber);
     const users = await userModel.find({phoneNumber: { $in: phoneNumbers }});
-    res.send({ users, message: 'users exists' });
+    res.send({ contact: formatOutput(users), message: 'users exists' });
   }
   else {
+    
     const objecId = new ObjectId();
     user = new userModel({
       id: objecId.toString().hashCode(),
