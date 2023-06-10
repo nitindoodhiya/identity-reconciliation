@@ -30,7 +30,10 @@ app.use('/users', usersRouter);
 app.use(function(req, res, next) {
   next(createError(404));
 });
-
+process.on('uncaughtException', function (err) {
+  console.log('uncaught error handled');
+  console.log(err);
+});
 // error handler
 app.use(function(err, req, res, next) {
   // set locals, only providing error in development
