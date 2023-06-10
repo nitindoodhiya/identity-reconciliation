@@ -58,17 +58,29 @@ router.post('/identify', async function(req, res, next) {
     emailUsers.forEach((user) => {
       phoneNumbers.push(user.phoneNumber);
     });
-    phoneNumbers.push(phoneNumber);
     const users = await userModel.find({phoneNumber: { $in: phoneNumbers }});
     res.send({ contact: formatOutput(users), message: 'users exists' });
   }
   else {
-    
+    const existingEntry = await userModel.find({$or: [{ email }, {phoneNumber}], linkPrecedence: 'primary' });
+    let existingPhoneNumberPrimary = null;
+    let existingEmailPrimary = null;
+    existingEntry.forEach((entry) => {
+      if (entry.email === email) {
+        existingEmailPrimary = entry;
+      }
+      if (entry.phoneNumber === phoneNumber) {
+        existingPhoneNumberPrimary = entry;
+      }
+    });
+    const primaryUser = existingEmailPrimary || existingPhoneNumberPrimary;
     const objecId = new ObjectId();
     user = new userModel({
       id: objecId.toString().hashCode(),
       phoneNumber,
       email,
+      linkedId: primaryUser ? primaryUser.id : null,
+      linkPrecedence: primaryUser ? 'secondary' : 'primary',  
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
