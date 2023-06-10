@@ -17,7 +17,7 @@ docker-compose up --build
 ```
 
 ### Access the project
-- Open the below URL
+- Open the below URL on browser or send post request to the given URL:
 ```
 http://localhost:3000/identify
 ```
