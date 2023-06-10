@@ -28,18 +28,30 @@ router.get('/identify', function(req, res, next) {
 
 router.post('/identify', async function(req, res, next) {
   const { email, phoneNumber } = req.body;
-  const objecId = new ObjectId();
-  user = new userModel({
-    id: objecId.toString().hashCode(),
-    phoneNumber,
-    email,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    deletedAt: null,
-  });
-  await user.save();
-
-  res.send(user);
+  let user = await userModel.findOne({ email, phoneNumber });
+  if (user) {
+    const emailUsers = await userModel.find({email});
+    const phoneNumbers = [];
+    emailUsers.forEach((user) => {
+      phoneNumbers.push(user.phoneNumber);
+    });
+    phoneNumbers.push(phoneNumber);  
+    const users = await userModel.find({phoneNumber: { $in: phoneNumbers }});
+    res.send({ users, message: 'users exists' });
+  }
+  else {
+    const objecId = new ObjectId();
+    user = new userModel({
+      id: objecId.toString().hashCode(),
+      phoneNumber,
+      email,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    });
+    await user.save();
+    res.send(user);
+  }
 });
 
 module.exports = router;
