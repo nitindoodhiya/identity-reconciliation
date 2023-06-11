@@ -94,7 +94,7 @@ router.post('/identify', async function (req, res, next) {
       let update = {};
       let create = true;
       if (existingEmailPrimary && existingPhoneNumberPrimary) {
-        filter = { phoneNumber: existingPhoneNumberPrimary.phoneNumber };
+        filter = { $or: [{ email: existingPhoneNumberPrimary.email }, { phoneNumber: existingPhoneNumberPrimary.phoneNumber }] };
         update = { $set: { linkPrecedence: 'secondary', linkedId: existingEmailPrimary.id, updatedAt: new Date() } };
         create = false;
       }
