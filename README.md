@@ -11,6 +11,10 @@ To keep track of a user when they use different emails and phoneNumbers
 ```
 git clone https://github.com/nitindoodhiya/identity-reconciliation.git
 ```
+- Change directory into the project
+```
+cd identity-reconciliation/
+```
 - Start the project
 ```
 docker-compose up --build
