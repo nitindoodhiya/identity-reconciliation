@@ -23,6 +23,7 @@ const formatOutput = (array) => {
   const emails = [];
   const secondaryContactIds = [];
   let primaryContatctId = null;
+  
   array.forEach((item) => {
     const { id } = item;
     const { phoneNumber, email, linkPrecedence } = item;
@@ -65,7 +66,8 @@ async function getContact({ email, phoneNumber }) {
   const users = await userModel.find({ phoneNumber: { $in: phoneNumbers } });
   return users;
 }
-router.post('/identify', async function (req, res, next) {
+
+router.post('/identify_old', async function (req, res, next) {
   const { email, phoneNumber: inputPhoneNumber } = req.body;
   try {
     let phoneNumber = null;
@@ -118,6 +120,81 @@ router.post('/identify', async function (req, res, next) {
       }
       const contact = await getContact({ email, phoneNumber });
       res.send({ contact: formatOutput(contact) });
+    }
+  } catch (err) {
+    res.send({ err });
+  }
+});
+
+async function getExistingUsers(user) {
+  const { linkedId, id } = user;
+  console.log({ linkedId, id });
+  let filter = [];
+  if (!linkedId) {
+    filter = [{ linkedId: id }, { id }];
+  } else {
+    filter = [{ linkedId }, { id: linkedId }];
+  }
+  return userModel.find({ $or: filter });
+}
+
+router.post('/identify', async function (req, res, next) {
+  const { email, phoneNumber: inputPhoneNumber } = req.body;
+  try {
+    let phoneNumber = null;
+    if (!isValidEmail(email)) throw new InvalidInputError('invalid email', 400);
+    if (inputPhoneNumber) phoneNumber = inputPhoneNumber.trim();
+    if (!phoneNumber || phoneNumber === '') throw new InvalidInputError('invalid phoneNumber', 400);
+    let user = await userModel.findOne({ email, phoneNumber });
+    if (user) {
+      const users = await getExistingUsers(user);
+      res.send({ contact: formatOutput(users) });
+    } else {
+      const sameEmailUser = await userModel.findOne({ email });
+      const sameNumberUser = await userModel.findOne({ phoneNumber });
+      let createNewUser = true;
+      const objectId = new ObjectId();
+      const id = objectId.toString().hashCode();
+      const newUser = {
+        id,
+        phoneNumber,
+        email,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+      if (!sameEmailUser && !sameNumberUser) {
+        newUser.linkPrecedence = 'primary';
+        newUser.linkedId = null;
+      }
+      if (sameEmailUser && !sameNumberUser) {
+        newUser.linkPrecedence = 'secondary';
+        newUser.linkedId = sameEmailUser.linkedId || sameEmailUser.id;
+      }
+      if (!sameEmailUser && sameNumberUser) {
+        newUser.linkPrecedence = 'secondary';
+        newUser.linkedId = sameNumberUser.linkedId || sameNumberUser.id;
+      }
+      if (sameEmailUser && sameNumberUser) {
+        createNewUser = false;
+        const emailPrimaryId = sameEmailUser.linkedId || sameEmailUser.id;
+        const numberPrimaryId = sameNumberUser.linkedId || sameNumberUser.id;
+        if (emailPrimaryId !== numberPrimaryId) {
+          await userModel.updateMany({ $or: [{ linkedId: numberPrimaryId}, { id: numberPrimaryId }] }, {
+            $set: {
+              linkedId: emailPrimaryId, linkPrecedence: 'secondary', updatedAt: new Date(),
+            }
+          });
+        }
+        newUser.linkPrecedence = 'secondary';
+        newUser.linkedId = sameEmailUser.linkedId || sameEmailUser.id;
+      }
+      if (createNewUser) {
+        const user  = new userModel(newUser);
+        await user.save();
+      }
+      const users = await getExistingUsers(newUser);
+      res.send({ contact: formatOutput(users) });
     }
   } catch (err) {
     res.send({ err });

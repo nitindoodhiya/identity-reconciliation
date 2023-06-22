@@ -4,7 +4,8 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const mongoose = require('mongoose');
-const MONGODB_URL = 'mongodb+srv://tininunknown19:hello911@cluster0.tatw49i.mongodb.net/bitespeed'
+const MONGODB_URL = 'mongodb://172.18.0.1:27017/bitespeed';
+
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 
